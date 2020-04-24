@@ -256,6 +256,16 @@ export type SourceLocation = {|
 export type Meta = JSONObject;
 
 export type Symbol = string;
+export interface Symbols {
+  get(exportSymbol: Symbol): ?{|local: Symbol, loc: ?SourceLocation|};
+  getAll(): $ReadOnlyMap<Symbol, {|local: Symbol, loc: ?SourceLocation|}>;
+  hasExportSymbol(exportSymbol: Symbol): boolean;
+  hasLocalSymbol(local: Symbol): boolean;
+}
+export interface MutableSymbols extends Symbols {
+  clear(): void;
+  set(exportSymbol: Symbol, local: Symbol, loc: ?SourceLocation): void;
+}
 
 export type DependencyOptions = {|
   +moduleSpecifier: ModuleSpecifier,
@@ -268,8 +278,7 @@ export type DependencyOptions = {|
   +env?: EnvironmentOpts,
   +meta?: Meta,
   +target?: Target,
-  +symbols?: $ReadOnlyMap<Symbol, Symbol>,
-  +symbolsLocs?: $ReadOnlyMap<Symbol, SourceLocation>,
+  +symbols?: $ReadOnlyMap<Symbol, {|local: Symbol, loc: ?SourceLocation|}>,
 |};
 
 export interface Dependency {
@@ -287,12 +296,10 @@ export interface Dependency {
   +target: ?Target;
   +sourceAssetId: ?string;
   +sourcePath: ?string;
-  // (imported symbol -> variable that it is used as)
-  +symbols: $ReadOnlyMap<Symbol, Symbol>;
-  +symbolsLocs: $ReadOnlyMap<Symbol, SourceLocation>;
   +pipeline: ?string;
 
-  setSymbol(exportSymbol: Symbol, symbol: Symbol, loc: ?SourceLocation): void;
+  // (imported symbol -> variable that it is used as)
+  +symbols: MutableSymbols;
 }
 
 export type File = {|
@@ -316,12 +323,12 @@ export interface BaseAsset {
   +isSplittable: ?boolean;
   +isSource: boolean;
   +type: string;
-  // (symbol exported by this -> name of binding to export)
-  +symbols: $ReadOnlyMap<Symbol, Symbol>;
-  +symbolsLocs: $ReadOnlyMap<Symbol, SourceLocation>;
   +sideEffects: boolean;
   +uniqueKey: ?string;
   +astGenerator: ?ASTGenerator;
+
+  // (symbol exported by this -> name of binding to export)
+  +symbols: Symbols;
 
   getAST(): Promise<?AST>;
   getCode(): Promise<string>;
@@ -350,8 +357,8 @@ export interface MutableAsset extends BaseAsset {
   addDependency(dep: DependencyOptions): string;
   addIncludedFile(file: File): void;
   addURLDependency(url: string, opts: $Shape<DependencyOptions>): string;
-  setSymbol(exportSymbol: Symbol, symbol: Symbol, loc: ?SourceLocation): void;
-  clearSymbols(): void;
+
+  +symbols: MutableSymbols;
 
   isASTDirty(): boolean;
   setAST(AST): void;
@@ -429,8 +436,7 @@ export type TransformerResult = {|
   +meta?: Meta,
   +pipeline?: ?string,
   +sideEffects?: boolean,
-  +symbols?: $ReadOnlyMap<Symbol, Symbol>;
-  +symbolsLocs?: $ReadOnlyMap<Symbol, SourceLocation>;
+  +symbols?: $ReadOnlyMap<Symbol, {|local: Symbol, loc: ?SourceLocation|}>,
   +type: string,
   +uniqueKey?: ?string,
 |};
